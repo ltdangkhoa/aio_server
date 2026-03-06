@@ -15,10 +15,23 @@ sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd
 
 systemctl restart ssh
 
-echo "===== Install Docker ====="
+echo "===== Update system ====="
 
 apt update
-apt install -y ca-certificates curl gnupg lsb-release
+apt upgrade -y
+
+echo "===== Install base tools ====="
+
+apt install -y \
+  ca-certificates \
+  curl \
+  gnupg \
+  lsb-release \
+  ncdu \
+  htop \
+  btop
+
+echo "===== Install Docker ====="
 
 mkdir -p /etc/apt/keyrings
 
@@ -33,7 +46,12 @@ $(lsb_release -cs) stable" \
 
 apt update
 
-apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt install -y \
+  docker-ce \
+  docker-ce-cli \
+  containerd.io \
+  docker-buildx-plugin \
+  docker-compose-plugin
 
 echo "===== Create Caddy network ====="
 
@@ -71,4 +89,5 @@ cd /root/caddy
 docker compose up -d
 
 echo "===== DONE ====="
+echo "Installed: docker, ncdu, htop, btop"
 echo "SSH root login enabled."
