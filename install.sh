@@ -2,18 +2,29 @@
 
 set -e
 
+export DEBIAN_FRONTEND=noninteractive
+
+echo "===== Configure needrestart (auto) ====="
+
+mkdir -p /etc/needrestart/conf.d
+echo '$nrconf{restart} = "a";' > /etc/needrestart/conf.d/auto-restart.conf
+
 echo "===== Enable root SSH key login ====="
 
 mkdir -p /root/.ssh
-cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/
+
+if [ -f /home/ubuntu/.ssh/authorized_keys ]; then
+  cp /home/ubuntu/.ssh/authorized_keys /root/.ssh/
+fi
+
 chmod 700 /root/.ssh
-chmod 600 /root/.ssh/authorized_keys
+chmod 600 /root/.ssh/authorized_keys || true
 chown -R root:root /root/.ssh
 
 sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
 sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
 
-systemctl restart ssh
+systemctl restart ssh || systemctl restart sshd
 
 echo "===== Update system ====="
 
@@ -29,7 +40,9 @@ apt install -y \
   lsb-release \
   ncdu \
   htop \
-  btop
+  btop \
+  git \
+  ufw
 
 echo "===== Install Docker ====="
 
@@ -53,6 +66,16 @@ apt install -y \
   docker-buildx-plugin \
   docker-compose-plugin
 
+systemctl enable docker
+systemctl start docker
+
+echo "===== Configure Firewall ====="
+
+ufw allow 22
+ufw allow 80
+ufw allow 443
+ufw --force enable
+
 echo "===== Create Caddy network ====="
 
 docker network create caddy || true
@@ -66,6 +89,7 @@ cat <<'EOT' > /root/caddy/docker-compose.yml
 services:
   caddy:
     image: lucaslorentz/caddy-docker-proxy:ci-alpine
+    container_name: caddy
     ports:
       - 80:80
       - 443:443/tcp
@@ -86,8 +110,15 @@ networks:
 EOT
 
 cd /root/caddy
+
 docker compose up -d
 
+echo "===== Cleanup ====="
+
+apt autoremove -y
+
 echo "===== DONE ====="
-echo "Installed: docker, ncdu, htop, btop"
-echo "SSH root login enabled."
+echo "Docker + Caddy installed"
+echo "Monitoring tools: ncdu / htop / btop"
+echo "Firewall enabled"
+echo "Root SSH key login enabled"
